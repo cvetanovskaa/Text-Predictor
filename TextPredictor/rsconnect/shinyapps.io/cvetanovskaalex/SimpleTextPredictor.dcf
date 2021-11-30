@@ -1,0 +1,14 @@
+name: SimpleTextPredictor
+title: SimpleTextPredictor
+username:
+account: cvetanovskaalex
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 5229356
+bundleId: 5308377
+url: https://cvetanovskaalex.shinyapps.io/SimpleTextPredictor/
+when: 1638253564.15643
+lastSyncTime: 1638253564.15647
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: figure/pressure-1.png

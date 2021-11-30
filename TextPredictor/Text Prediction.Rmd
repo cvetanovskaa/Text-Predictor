@@ -1,0 +1,52 @@
+---
+title: "Text Predictor"
+author: "Aleksandra Cvetanovska"
+date: "11/29/2021"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Overview
+
+The goal of the Text Predictor application is to predict the next word, using Natural Language Processing, based on what the user has already entered The data for the project can be found at: https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip
+
+The application is available at:
+https://cvetanovskaalex.shinyapps.io/SimpleTextPredictor/
+
+The code, as well as a milestone report doing some exploratory analysis, is available at:
+https://github.com/cvetanovskaa/Text-Predictor
+
+## Data Pre-processing
+
+In order to create & use the prediction algorithms we had to take a few steps to prepare the data. That includes:
+
+- Extract portion of the data (we use 5%)
+- Clean the data (remove numbers and symbols, and set text to lowercase)
+- Tokenize the data (create tokens - a table of words and their corresponding frequencies)
+- Create 1, 2, 3, 4, and 5-grams of the data 
+
+## Using the Text Predictor Application
+
+The app has four components:
+
+- Text input, where the user enters their desired text
+- Tab for `Stupid Back-Off` algorithm, which displays a table with the top 5 predicted words and their frequencies
+- Tab for `Laplace` algorithm, which displays a data table with the top 5 predicted words and their frequencies
+- An `About` tab section that gives a more in-depth explanation of the algorithms. 
+
+The `Stupid Back-Off` algorithm is better performing, compared to `Laplace`. It uses a discount value alpha of 0.4, which is applied to all lower n-grams while searching for a prediction.
+Since we're including a slower algorithm - `Laplace`, we're using a smaller subset of data - only 5% of what we have available.
+
+
+## The Text Predictor Application 
+
+```{r out.width="800px", echo=FALSE}
+  knitr::include_graphics(
+    "https://github.com/cvetanovskaa/Text-Predictor/blob/main/Screen%20Shot%202021-11-29%20at%2010.35.42%20PM.png?raw=true"
+    )
+```
+
+
