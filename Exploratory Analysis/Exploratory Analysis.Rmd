@@ -1,0 +1,180 @@
+---
+title: "Data Science Capstone - Exploratory Analysis"
+author: "Aleksandra Cvetanovska"
+date: "11/21/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(stats)
+library(base)
+library(tidyr)
+library(tidytext)
+library(ggplot2)
+library(ggpubr)
+
+conTwitter <- file("en_US/en_US.twitter.txt", "r")
+conBlog <- file("en_US/en_US.blogs.txt", "r")
+conNews <- file("en_US/en_US.news.txt", "r")
+
+twitter_info <- file.info('en_US/en_US.twitter.txt')
+blogs_info <- file.info('en_US/en_US.blogs.txt')
+news_info <- file.info('en_US/en_US.news.txt')
+ 
+twitter <- data.frame("text" = readLines(conTwitter, skipNul=TRUE))
+blogs <- data.frame("text" = readLines(conBlog, skipNul=TRUE))
+news <- data.frame("text" = readLines(conNews, skipNul=TRUE))
+
+close(conTwitter)
+
+char_num_twitter <- lapply(twitter, nchar)
+char_num_blogs <- lapply(blogs, nchar)
+char_num_news <- lapply(news, nchar)
+```
+
+## Exploratory Analysis
+
+### Basic Summary
+First, let's see some general characteristics of the data - the size of the dataset in bytes, how many words, lines each dataset has. We also examine the length of the longest entry in each separate dataset.
+
+```{r}
+max(unlist(char_num_twitter)) # Number of characters of the longest tweet
+max(unlist(char_num_blogs)) # Number of characters of the longest blog post
+max(unlist(char_num_news)) # Number of characters of the longest news article
+
+summary_df <- data.frame(
+  c(twitter_info$size, blogs_info$size, news_info$size),
+  c(sum(unlist(char_num_twitter)), sum(unlist(char_num_blogs)), sum(unlist(char_num_news))),
+  c(nrow(twitter), nrow(blogs), nrow(news))
+)
+
+colnames(summary_df) <- c('Dataset Size', 'Character # in Dataset', 'Lines # in Dataset')
+
+summary_df
+```
+
+
+### Word Frequencies
+
+Now, let's examine the top eight word frequencies of each different data source, without doing any cleanup. As we can see, the typical English words such as 'the', 'to', 'and' are the most frequent, regardless of the data source, albeit with some small changes in their rankings between the different data sources. This is expected since these words are used to build out sentences, even though they don't bring much meaning.
+
+```{r cache=TRUE, out.extra='style="max-width:none; width:100vw; margin-left:calc(50% - 50vw);"', fig.width = 12, fig.height = 3}
+par(mfrow=c(1,3))
+twitter_words <- twitter %>% unnest_tokens(word, text) %>% count(word, sort=TRUE)
+blog_words <- blogs %>% unnest_tokens(word, text) %>% count(word, sort=TRUE)
+news_words <- news %>% unnest_tokens(word, text) %>% count(word, sort=TRUE) 
+
+twitter_plot <- ggplot(twitter_words[1:8,], aes(x=as.factor(word), y=n)) + 
+    geom_col(fill = "lightblue") + xlab('Word') + ylab('Frequency') + 
+    ggtitle('Word Frequency in Twitter Data')
+
+blog_plot <- ggplot(blog_words[1:8,], aes(x=as.factor(word), y=n)) + 
+    geom_col(fill = "lightgreen") + xlab('Word') + ylab('Frequency') + 
+    ggtitle('Word Frequency in Blogs Data')
+
+news_plot <- ggplot(news_words[1:8,], aes(x=as.factor(word), y=n)) + 
+    geom_col(fill = "lightyellow") + xlab('Word') + ylab('Frequency') + 
+    ggtitle('Word Frequency in News Data')
+
+ggarrange(twitter_plot, blog_plot, news_plot, ncol=3)
+```
+
+Once we clean the datasets by removing numbers, punctuation, and stop words (words that have no semantic value - 'the', 'a', 'of', etc.), and setting all the words to lowercase, we get a more realistic understanding of what are the most frequent words that actually bring meaning. In this case words like 'love', and 'time' are most frequent, across all data sources, which is to be expected as those are big ideas that we think, and write about quite often.
+
+```{r cache=TRUE, out.extra='style="max-width:none; width:100vw; margin-left:calc(50% - 50vw);"', fig.width = 12, fig.height = 3}
+par(mfrow=c(1,3))
+twitter_words_clean <- twitter %>% unnest_tokens(
+  word,
+  text,
+  to_lower=TRUE,
+  strip_punct=TRUE,
+  strip_numeric=TRUE) %>% 
+  anti_join(stop_words) %>%
+  count(word, sort=TRUE)
+
+blog_words_clean <- blogs %>% unnest_tokens(
+  word, 
+  text, 
+  to_lower=TRUE,
+  strip_punct=TRUE, 
+  strip_numeric=TRUE) %>% 
+  anti_join(stop_words) %>%
+  count(word, sort=TRUE)
+
+news_words_clean <- news %>% unnest_tokens(
+  word, 
+  text, 
+  to_lower=TRUE,
+  strip_punct=TRUE, 
+  strip_numeric=TRUE) %>% 
+  anti_join(stop_words) %>%
+  count(word, sort=TRUE) 
+
+twitter_plot <- ggplot(twitter_words_clean[1:5,], aes(x=as.factor(word), y=n)) + 
+  geom_col(fill = "lightblue") + xlab('Word') + ylab('Frequency') + 
+  ggtitle('Word Frequency in Twitter Data')
+
+blog_plot <- ggplot(blog_words_clean[1:5,], aes(x=as.factor(word), y=n)) + 
+  geom_col(fill = "lightgreen") + xlab('Word') + ylab('Frequency') + 
+  ggtitle('Word Frequency in Blogs Data')
+
+news_plot <- ggplot(news_words_clean[1:5,], aes(x=as.factor(word), y=n)) + 
+  geom_col(fill = "lightyellow") + xlab('Word') + ylab('Frequency') + 
+  ggtitle('Word Frequency in News Data')
+
+ggarrange(twitter_plot, blog_plot, news_plot, ncol=3)
+```
+
+## Bigrams
+
+Now let's examine bigrams - pairs of words and how often they show up together. We combine the datasets from twitter, blogs, and news, and perform some cleaning up of the data - setting words to lowercase, removing punctuation, digits, and whitespace at the beginning and end of the sentences. We don't remove the stop words in this case, because due to the data we have, when only looking at two word pairings, the pairings we get are including the stop words. So, for a sentence such as, `the house lies on the outskirts of the city.`, the pairing will be `the house`, instead of `house lies`. If we remove the stop words after we've created the bigrams we're left with word pairings that don't make much sense.
+
+```{r cache=TRUE}
+twitter$source_type <- 'twitter'
+blogs$source_type <- 'blogs'
+news$source_type <- 'news'
+
+en_combined_dataset <- rbind(
+  sample_n(twitter, nrow(twitter)*0.05),
+  sample_n(blogs, nrow(blogs)*0.05),
+  sample_n(news, nrow(news)*0.05)
+)
+
+en_combined_dataset$text <- tolower(en_combined_dataset$text) # Set all words to be in lowercase
+en_combined_dataset$text <- gsub("[[:punct:]]+", "", en_combined_dataset$text) # Remove punctuation from the text
+en_combined_dataset$text <- gsub('[0-9]+', "", en_combined_dataset$text) # Remove numbers from the dataset
+en_combined_dataset$text <- trimws(en_combined_dataset$text)
+
+en_combined_dataset_bigram <- en_combined_dataset %>%
+    unnest_tokens(bigram, text, token = "ngrams", n = 2) %>%
+    count(bigram, sort = TRUE)
+
+ggplot(en_combined_dataset_bigram[1:5,], aes(x=as.factor(bigram), y=n)) + 
+  geom_col(fill = "red") + xlab('Bigram') + ylab('Frequency') + 
+  ggtitle('Bigram Frequency')
+```
+
+## Trigram
+
+In the trigram (consecutive trio of words) case though, we can remove the stop words and still end with meaningfull results. In this case we can see that the three most prominent trios of words are: 'happy mothers day', 'township board district ', and 'president barack obama'.
+
+```{r cache=TRUE}
+en_combined_dataset_trigram <- en_combined_dataset %>%
+    unnest_tokens(trigram, text, token = "ngrams", n = 3) %>%
+    separate(trigram, c("word1", "word2", "word3"), sep = " ") %>%
+    filter(!word1 %in% stop_words$word,
+           !word2 %in% stop_words$word,
+           !word3 %in% stop_words$word) %>%
+    count(word1, word2, word3, sort = TRUE)
+
+en_combined_dataset_trigram <- en_combined_dataset_trigram %>% unite(combined, word1, word2, word3, sep=" ")
+
+ggplot(en_combined_dataset_trigram[2:6,], aes(x=as.factor(combined), y=n)) + 
+  geom_col(fill = "black") + xlab('Trigram') + ylab('Frequency') + 
+  ggtitle('Trigram Frequency')
+```
+
+## Next Steps
+
+The next steps are creating a predictive model, which will predict the next word based on the current input from the user. The model will be based on the n-gram method, and will be deployed as a shiny app, along with a powerpoint presentation to explain how everything works. 
